@@ -10,8 +10,8 @@ fi
 
 declare -a users=()
 
-for folder in "$users_folder"/*; 
-    do 
+user_search(){
+    for folder in "$users_folder"/*;do 
         if [ -d "$folder" ]; then
             profile_img_path="$folder/profile_img.jpg"
             user_name=$(basename "$folder")
@@ -24,53 +24,61 @@ for folder in "$users_folder"/*;
             users+=("$folder")
         fi
     done
-
+}
 
 create_user(){
     name=$(zenity --forms --title="Create New User" --ok-label="Next" --text="Enter User Name" --add-entry="User Name")
-    if [[ -z $name ]]; then
-        zenity --error --text="Username Cannot be Empty"
-        exit 1
-    else
-        image=$(zenity --file-selection --title="Select Profile Image" --file-filter="*.jpg")
-        user_directory="$users_folder/$name"
-        mkdir -p "$user_directory"
-        destination_directory="$user_directory/profile_img.jpg" 
-        if [[ -d $user_directory ]]; then
-            cp "$image" "$destination_directory"
-            convert "$user_directory/profile_img.jpg" -resize 50x50 "$user_directory/profile_img.jpg"
-        else
-            echo "User directory was not created."
-        fi
-    fi
+    case $? in 
+        0) 
+            if [[ -z $name ]]; then
+                zenity --error --text="Username Cannot be Empty"
+                create_user
+            else    
+                image=$(zenity --file-selection --title="Select Profile Image" --file-filter="*.jpg")
+                user_directory="$users_folder/$name"
+                mkdir -p "$user_directory"
+                destination_directory="$user_directory/profile_img.jpg" 
+                if [[ -d $user_directory ]]; then
+                    cp "$image" "$destination_directory"
+                    convert "$user_directory/profile_img.jpg" -resize 50x50 "$user_directory/profile_img.jpg"
+                else
+                    echo "User directory was not created."
+                fi
+            fi;;
+        1) exit 1;;
+    esac
+
+    
 }
 
-
-
-# Ensure the list is not empty
-if [ ${#users[@]} -eq 0 ]; then
-    create_user
-fi
-
-selection=$(zenity --list --title="Select User" --text="Select or Create User" --imagelist --ok-label=Open --cancel-label=Close --extra-button="Add User" --print-column=3 --separator=" | " --width=600 --height=400 \
+launcher(){
+    user_search
+    # Ensure the list is not empty
+    if [ ${#users[@]} -eq 0 ]; then
+        create_user
+    fi
+    selection=$(zenity --list --title="Select User" --text="Select or Create User" --imagelist --ok-label=Open --cancel-label=Close --extra-button="Add User" --print-column=3 --separator=" | " --width=600 --height=400 \
        --column="Profile Image" \
        --column="User Name" \
        --column="Folder" \
        "${users[@]}")
 
+    case $? in
+        0)
+            echo "Executing: opera --user-data-dir=\"$selection\""
+            opera --user-data-dir="$selection"
+            ;;
+        1)
+            if [[ $selection -eq "" ]];then
+                echo "Close";
+            else
+                create_user
+                opera --user-data-dir="$user_directory"
+            fi
+            ;;
+    esac
+}
 
-case $? in
-    0)
-        echo "Executing: opera --user-data-dir=\"$selection\""
-        opera --user-data-dir="$selection"
-        ;;
-    1)
-        if [[ $selection -eq "" ]];then
-            echo "Close";
-        else
-            create_user
-            opera --user-data-dir="$user_directory"
-        fi
-        ;;
-esac
+launcher
+
 

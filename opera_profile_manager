@@ -22,14 +22,34 @@ for folder in "$users_folder"/*;
             users+=("$profile_img_path")
             users+=("$user_name")
             users+=("$folder")
-            echo ${#users[@]}; 
         fi
     done
 
+
+create_user(){
+    name=$(zenity --forms --title="Create New User" --ok-label="Next" --text="Enter User Name" --add-entry="User Name")
+    if [[ -z $name ]]; then
+        zenity --error --text="Username Cannot be Empty"
+        exit 1
+    else
+        image=$(zenity --file-selection --title="Select Profile Image" --file-filter="*.jpg")
+        user_directory="$users_folder/$name"
+        mkdir -p "$user_directory"
+        destination_directory="$user_directory/profile_img.jpg" 
+        if [[ -d $user_directory ]]; then
+            cp "$image" "$destination_directory"
+            convert "$user_directory/profile_img.jpg" -resize 50x50 "$user_directory/profile_img.jpg"
+        else
+            echo "User directory was not created."
+        fi
+    fi
+}
+
+
+
 # Ensure the list is not empty
 if [ ${#users[@]} -eq 0 ]; then
-    zenity --info --text="No users found in $users_folder"
-    exit 0
+    create_user
 fi
 
 selection=$(zenity --list --title="Select User" --text="Select or Create User" --imagelist --ok-label=Open --cancel-label=Close --extra-button="Add User" --print-column=3 --separator=" | " --width=600 --height=400 \
@@ -48,23 +68,7 @@ case $? in
         if [[ $selection -eq "" ]];then
             echo "Close";
         else
-            name=$(zenity --forms --title="User Information" --ok-label="Next" --text="Enter User Name" \
-            --add-entry="User Name")
-            if [[ -z $name ]]; then
-                zenity --error --text="Username Cannot be Empty"
-                exit 1
-            else
-                image=$(zenity --file-selection --title="Select Profile Image" --file-filter="*.jpg")
-                user_directory="$users_folder/$name"
-                mkdir -p "$user_directory"
-                destination_directory="$user_directory/profile_img.jpg" 
-                if [[ -d $user_directory ]]; then
-                    cp "$image" "$destination_directory"
-                    convert "$user_directory/profile_img.jpg" -resize 50x50 "$user_directory/profile_img.jpg"
-                else
-                    echo "User directory was not created."
-                fi
-            fi
+            create_user
             opera --user-data-dir="$user_directory"
         fi
         ;;
